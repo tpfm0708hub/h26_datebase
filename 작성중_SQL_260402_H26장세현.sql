@@ -202,3 +202,53 @@ select t.* from 상영관 t join 극장 c on t.극장번호 = c.극장번호 whe
 --③
 select r.극장번호, count(r.고객번호) as cnt_01 from 예약 r where 날짜 = to_date('2025-9-1','YYYY-MM-DD') group by r.극장번호;
 --④
+select t1.영화제목 from 예약 r1 join 상영관 t1 on r1.상영관번호 =  t1.상영관번호 join 극장 c1 on r1.극장번호 = c1.극장번호
+ where 날짜 = to_date('2024-10-1','YYYY-MM-DD') group by t1.영화제목 having count(t1.영화제목) = 
+(select max(count(r.고객번호)) from 예약 r join 상영관 t on r.상영관번호 = t.상영관번호 where 날짜 = to_date('2024-10-1','YYYY-MM-DD') group by t.영화제목);
+
+--(5)DML
+--①각 테이블에 데이터를 삽입하는 INSERTans을 하나씩 실행시켜 보시오.
+--②영화의 가격을 10%씩 인상하시오
+--①
+insert into 극장 values(6,'CGV','야탑');
+insert into 고객 values (9,'김갑수', '야탑');
+insert into 상영관 values(6,1,'과속스캔들',8000,10);
+insert into 예약 values(6,1,9,9,'2026-4-3');
+--②
+update 상영관 set 가격 = 가격 * 1.1;
+
+--문제 21
+--(1)테이블을 생성하는 CREATE 문과 데이터를 삽입하는 INSERT문을 작성하시오.
+--테이블의 데이터 타입은 임의로 정하고, 데이터는 다음 질의의 결과가 나오도록
+--삽입한다.
+--(2)모든 판매원의 이름과 급여를 보이시오. 단 중복 행은 제거한다.
+--(3)나이가 30세 미만인 판매원의 이름을 보이시오.
+--(4)‘S’로 끝나는 도시에 사는 고객의 이름을 보이시오.
+--(5)주문을 한 고객의 수(서로 다른 고객만)를 구하시오.
+--(6)판매원 각각에 대하여 주문의 수를 계산하시오.
+--(7)‘LA’에 사는 고객으로부터 주문을 받은 판매원의 이름과 나이를 보이시오.(부속질의 사용)
+--(8)‘LA’에 사는 고객으로부터 주문을 받은 판매원의 이름과 나이를 보이시오.(조인사용)
+--(9)두 번 이상 주문을 받은 판매원의 이름을 보이시오.
+--(10)판매원 ‘TOM’의 봉급을 45,000원으로 변경하는 sql문을 작성하시오
+
+--(1)
+create table salesperson_0402(
+name varchar2(20) Primary key,
+age number not null,
+salary number);
+
+create table customer_0402(
+name varchar2(20) primary key,
+city varchar2(20),
+indiustrutype number);
+
+create table order_0402(
+number_0402 number,
+custname varchar2(20),
+salesperson varchar2(20),
+amount number,
+primary key(custname, saleperson),
+constraint fk_order_cust_0402 foreign key(custname)
+references customer_0402(name),
+constraint fk_order_sale_0402 foreign key(salesperson)
+references salespereson_0402(name));
