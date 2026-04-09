@@ -45,7 +45,7 @@ select count(고객번호) from 예약 where 날짜 = to_date('2025-9-1','YYYY-M
 --③‘대한 극장의 전체 수입을 보이시오
 
 --①
-select t.영화제목 from 상영관 t where t.극장번호 in (selectg c.극장번호 from 극장 c where c.극장이름 = '대한');
+select t.영화제목 from 상영관 t where t.극장번호 in (select c.극장번호 from 극장 c where c.극장이름 = '대한');
 --②
 select distinct p.이름 from 예약 r join 극장 c on r.극장번호 = c.극장번호 join 고객 p on r.고객번호 = p.고객번호 where c.극장이름='대한';
 --③
