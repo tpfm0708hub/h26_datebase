@@ -1,0 +1,475 @@
+--교재 127 chap2장 연습문제 17번 기준
+--[수강신청 데이터베이스]
+--학생(학번, 이름, 전공, 학년)
+--수강(과목코드, 학번, 수강학기, 성적)
+--과목(과목코드, 과목이름, 강의실, 요일, 담당교수)
+
+--(1)학생 수강 전체 현황 뷰를 작성하시오.
+CREATE VIEW 학생_수강_전체_현황 AS
+    SELECT stu.학번, stu.이름, stu.전공, stu.학년, sub.과목이름, roll.성적
+        FROM 수강 roll JOIN 학생 stu ON roll.학번 = stu.학번
+    JOIN 과목 sub ON roll.과목코드 = sub.과목코드;
+    
+--(2)각 학생별 평균 성적 뷰를 작성하시오.
+CREATE VIEW 각_학생별_평균_성적 AS
+    SELECT stu.학번, stu.이름, stu.전공, stu.학년, AVG(roll.성적) OVER(PARTITION BY stu.학번) AS 평균성적
+        FROM 학생 stu JOIN 수강 roll ON stu.학번 = roll.학번;
+
+--(3) 과목별 수강 인원 및 평균 성적 뷰를 작성하시오.
+CREATE VIEW 과목별_수강인원_및_평균성적뷰 AS
+    SELECT sub.과목이름, COUNT(*) AS 수강인원, AVG(roll.성적) AS 평균성적, MAX(roll.성적) AS 최고성적, MIN(roll.성적) AS 최저성적
+        FROM 학생 stu JOIN 수강 roll ON stu.학번 = roll.학번
+    JOIN 과목 sub ON roll.과목코드  = sub.과목코드
+        GROUP BY sub.과목이름;
+
+--(4)성적 우수 학생 뷰를 작성하시오.(평균 90점 이상)
+CREATE VIEW 성적_우수_학생뷰 AS
+    SELECT stu.학번, stu.이름
+        FROM 학생 stu JOIN 수강 roll ON stu.학번 = roll.학번
+    GROUP BY stu.학번, stu.이름
+        HAVING AVG(roll.성적) >= 90;
+        
+--(5) 전공 별 수강 통계 뷰를 작성하시오
+CREATE VIEW 전공별_수강통계뷰 AS
+    SELECT stu.전공, COUNT(*) AS 총수강건수, AVG(roll.성적) AS 전공평균성적
+        FROM 수강 roll JOIN 학생 stu ON roll.학번 = stu.학번
+    GROUP BY stu.전공;
+    
+--(6) 학기별 수강 현황 뷰를 작성하시오.
+CREATE VIEW 학기별_수강현황뷰 AS
+    SELECT roll.수강학기, COUNT(*) AS 수강현황
+        FROM 수강 roll
+    GROUP BY roll.수강학기;
+    
+--(7) 미수강 학생 뷰를 작성하시오.
+CREATE VIEW 미수강_학생뷰 AS
+    SELECT stu.학번, stu.이름, stu.전공, stu.학년
+        FROM 학생 stu LEFT JOIN 수강 roll ON stu.학번 = roll.학번
+    WHERE roll.학번 IS NULL;
+    
+--(8)담당 교수별 강의 및 수강 현황 뷰를 작성하시오
+CREATE VIEW 담당교수별_강의및_수강현황뷰 AS
+    SELECT sub.담당교수, COUNT(*) OVER(PARTITION BY sub.담당교수) AS 담당과목수, roll.총수강학생수
+        FROM (  SELECT 과목코드, COUNT(*) AS 총수강학생수
+                    FROM 수강
+                GROUP BY 과목코드) roll JOIN 과목 sub ON roll.과목코드 = sub.과목코드;
+    
+--(9) 학년별 수강 과목 수 및 평균 성적 뷰를 작성하시오.
+CREATE VIEW 학년별_수강과목수및_평균성적뷰 AS
+    SELECT stu.학년, COUNT(roll.과목코드) AS 수강과목수, AVG(roll.성적) AS 평균성적
+        FROM 학생 stu JOIN 수강 roll ON stu.학번 = roll.학번
+    GROUP BY stu.학년;
+
+--(10) 성적 미입력(NULL) 수강 내역 뷰를 작성하시오.
+CREATE VIEW 성적_미입력_수강내역뷰 AS
+    SELECT *
+        FROM 수강
+    WHERE 성적 IS NULL;
+
+--교재 126 chap2장 연습문제 16번 극장데이터베이스 기준
+--극장(극장번호, 극장이름, 위치)
+--상영관(극장번호, 상영관번호, 영화제목, 가격, 좌석수)
+--예약(극장번호, 상영관번호, 고객번호, 좌석번호, 날짜)
+--고객(고객번호, 이름, 주소)
+
+--1. 전체 상영 정보 통합 뷰를 작성하시오.
+CREATE VIEW 전체_상영정보_통합뷰 AS
+    SELECT t.극장번호, t.극장이름, t.위치, c.상영관번호, c.영화제목, c.가격, c.좌석수
+        FROM 극장 t JOIN 상영관 c ON t.극장번호 = c.극장번호;
+
+--2. 예약 전체 현황 뷰를 작성하시오
+CREATE VIEW 예약전체_현황뷰 AS
+SELECT p.이름 AS 고객이름, r.극장번호, r.상영관번호, c.영화제목
+    FROM 예약 r JOIN 고객 p ON r.고객번호 = p.고객번호
+JOIN 상영관 c ON r.상영관번호 = c.상영관번호;
+
+--3. 극장별 상영 영화 목록 뷰를 작성하시오
+CREATE VIEW 극장별_상영영화_목록뷰 AS
+    SELECT t.극장이름, c.영화제목
+        FROM 극장 t JOIN 상영관 c ON t.극장번호 = c.극장번호;
+
+--4. 고객별 예약 내역 뷰를 작성하시오
+CREATE VIEW 고객별_예약내역뷰 AS
+    SELECT p.이름, c.영화제목, r.날짜, c.가격
+        FROM 고객 p JOIN 예약 r ON p.고객번호 = r.고객번호
+    JOIN 상영관 c ON r.상영관번호 = c.상영관번호;
+
+--5. 상영관별 예약 인원 및 잔여 좌석 뷰를 작성하시오
+CREATE VIEW 상영관별_예약인원및_잔여좌석뷰 AS
+    SELECT c.상영관번호, MAX(c.좌석수) AS 총좌석, COUNT(r.고객번호) AS 예약인원, MAX(c.좌석수) - COUNT(r.고객번호) AS 잔여좌석
+        FROM 상영관 c LEFT JOIN 예약 r ON c.상영관번호 = r.상영관번호
+    GROUP BY c.상영관번호;
+    
+--6. 극장별 총 예약 수 및 매출 뷰를 작성하시오
+CREATE VIEW 극장별_총예약수및_매출뷰 AS
+    SELECT c.극장번호, COUNT(r.고객번호) AS 총예약수, SUM(c.가격) AS 총매출
+        FROM 예약 r JOIN 상영관 c ON r.상영관번호 = c.상영관번호
+    GROUP BY c.극장번호;
+
+--7.영화별 예약 현황 뷰를 작성하시오
+CREATE VIEW 영화별_예약현황뷰 AS
+    SELECT c.영화제목, COUNT(r.고객번호) AS 총예약인원, SUM(c.가격) AS 총매출
+        FROM 예약 r JOIN 상영관 c ON r.상영관번호 = c.상영관번호
+    JOIN 극장 t ON r.극장번호 = r.극장번호 GROUP BY c.영화제목;
+
+--8. 날짜별 예약 현황 뷰를 작성하시오
+CREATE VIEW 날짜별_예약현황뷰 AS
+    SELECT r.날짜, COUNT(r.고객번호) AS 예약건수, SUM(c.가격) AS 매출조회
+        FROM 예약 r JOIN 상영관 c ON r.상영관번호 = c.상영관번호
+    GROUP BY r.날짜;
+
+--9. 예약 이력이 없는 고객 뷰
+CREATE VIEW 예약이력_없는고객뷰 AS
+    SELECT p.고객번호, p.이름, p.주소
+        FROM 고객 p LEFT JOIN 예약 r  ON p.고객번호 = r.고객번호
+    WHERE r.극장번호 IS NULL;
+    
+--10. 고객별 총 예약 횟수 및 결제 금액 뷰
+CREATE VIEW 고객별_총예약횟수및_결제금액뷰 AS
+    SELECT r.고객번호, COUNT(r.고객번호) AS 예약활동, SUM(c.가격) AS 결제금액
+        FROM 예약 r JOIN 상영관 c ON r.상영관번호 = c.상영관번호
+    GROUP BY r.고객번호;
+
+--11. 가격이 가장 비싼 상영관 뷰를 작성하시오
+CREATE VIEW 가격이_가장비싼_상영관뷰 AS
+    SELECT c.극장번호, c.상영관번호, c.영화제목, c.가격, c.좌석수
+        FROM 상영관 c
+    WHERE c.가격 = (SELECT MAX(가격)
+        FROM 상영관
+        );
+
+--12. 위치별 극장 및 상영 현황 뷰
+CREATE VIEW 위치별_극장및_상영현황뷰 AS
+    SELECT t.위치, c1.상영영화수
+        FROM(   SELECT c.극장번호, COUNT(c.영화제목) AS 상영영화수
+                    FROM 상영관 c
+                GROUP BY c.극장번호) c1 JOIN 극장 t ON c1.극장번호 = t.극장번호;
+
+--13. 만석 상영관 뷰를 작성하시오
+CREATE VIEW 만석_상영관뷰 AS
+    SELECT c.극장번호, c.상영관번호, c.영화제목, c.가격, c.좌석수
+        FROM (  SELECT r.상영관번호, COUNT(r.고객번호) AS 예약좌석수
+                    FROM 예약 r
+                GROUP BY r.상영관번호) r1 JOIN 상영관 c ON r1.상영관번호 = c.상영관번호;
+
+--14. 특정 날짜 예약 고객 상세 뷰를 작성하시오
+CREATE VIEW 특정날짜_예약고객_상세뷰 AS
+SELECT r.날짜, p1.고객번호, p1.이름, p1.주소
+    FROM (  SELECT p.고객번호, p.이름, p.주소
+                FROM 고객 p) p1 JOIN 예약 r ON p1.고객번호 = r.고객번호;
+
+--15.예약 없는 상영관 뷰_개설되었지만 예약이 한 건도 없는 상영관 조회
+CREATE VIEW 예약없는_상영관뷰 AS
+    SELECT c.극장번호, c.상영관번호, c.영화제목, c.가격, c.좌석수
+        FROM 상영관 c LEFT JOIN 예약 r ON c.상영관번호 = r.상영관번호
+    WHERE r.상영관번호 IS NULL;
+
+--127페이지 문제 18번 [판매원 데이터베이스]를 기본으로 뷰를 작성한다.
+
+--1. 전체 주문 통합 현황 뷰를 작성하시오
+CREATE VIEW 전체주문_통합현황뷰 AS
+    SELECT *
+        FROM ORDER_0402 o LEFT JOIN SALESPERSON_0402 s ON o.salesperson = s.name
+    LEFT JOIN CUSTOMER_0402 c ON o.CUSTNAME = c.NAME;
+
+--2. 영업사원별 총 주문 금액 및 건수 뷰를 작성하시오
+CREATE VIEW 영업사원별_총주문금액및_건수뷰 AS
+    SELECT o.SALESPERSON AS 영업사원, SUM(o.AMOUNT) AS 총주문금액, COUNT(o.NUMBER_0402) as 총주문건수
+        FROM ORDER_0402 o
+    GROUP BY o.SALESPERSON;
+    
+--3. 고객별 총 주문 금액 뷰를 작성하시오
+CREATE VIEW 고개별_총주문금액뷰 AS
+    SELECT o.CUSTNAME, SUM(o.AMOUNT) AS 총주문금액
+        FROM ORDER_0402 o
+    GROUP BY o.CUSTNAME;
+    
+--4. 도시별 주문 현황 뷰를 작성하시오
+CREATE VIEW 도시별_주문현황뷰 AS
+    SELECT c.CITY, COUNT(o.NUMBER_0402) AS 주문현황
+        FROM ORDER_0402 o LEFT JOIN CUSTOMER_0402 c ON o.CUSTNAME = c.NAME
+    GROUP BY c.CITY;
+
+--5. 업종별 주문 통계 뷰를 작성하시오
+CREATE VIEW 업종별_주문통계뷰 AS
+    SELECT c.INDUSTRYTYPE AS 업종, COUNT(*) AS 주문통계
+        FROM ORDER_0402 o LEFT JOIN CUSTOMER_0402 c ON o.CUSTNAME = c.NAME
+    GROUP BY c.INDUSTRYTYPE;
+
+--6. 고액 주문 뷰 (amount 상위)를 작성하시오
+CREATE VIEW 고액주문뷰 AS
+    SELECT c.NAME AS 이름, c.CITY AS 도시, c.INDUSTRYTYPE AS 업종, SUM(o.AMOUNT) AS 주문금액
+        FROM ORDER_0402 o LEFT JOIN CUSTOMER_0402 c ON o.CUSTNAME = c.NAME
+    WHERE o.AMOUNT >= ( SELECT AVG(AMOUNT)
+                            FROM ORDER_0402)
+        GROUP BY c.NAME, c.CITY, c.INDUSTRYTYPE;
+
+--7. 주문 실적 없는 영업사원 뷰를 작성하시오
+CREATE VIEW 주문실적없는_영업사원뷰 AS
+    SELECT s.NAME AS 이름, s.AGE AS 나이, s.SALARY AS 급여
+        FROM SALESPERSON_0402 s LEFT JOIN ORDER_0402 o ON s.NAME = o.SALESPERSON 
+    WHERE o.SALESPERSON IS NULL;
+
+--8. 주문 이력 없는 고객 뷰를 작성하시오
+CREATE VIEW 주문이력없는_고객뷰 AS
+    SELECT c.NAME AS 이름, c.CITY AS 도시, c.INDUSTRYTYPE AS 업종
+        FROM CUSTOMER_0402 c LEFT JOIN ORDER_0402 o ON c.NAME = o.CUSTNAME
+    WHERE o.CUSTNAME IS NULL;
+
+--9. 영업사원 급여 등급 뷰를 작성하시오
+CREATE VIEW 영업사원_급여등급뷰 AS
+    SELECT CASE WHEN s.SALARY >= 300 THEN 1
+                WHEN s.SALARY >= 250 THEN 2
+                ELSE 3
+            END AS 급여등급, s.NAME AS 이름, s.AGE AS 나이
+        FROM SALESPERSON_0402 s;
+        
+--10. 영업사원별 담당 고객 목록 뷰를 작성하시오
+CREATE VIEW 영업사원별_담당고객_목록뷰 AS
+    SELECT DISTINCT o.SALESPERSON AS 영업사원, o.CUSTNAME AS 담당고객
+        FROM ORDER_0402 o
+    ORDER BY o.SALESPERSON;
+
+--11. 최고 실적 영업사원 뷰를 작성하시오
+CREATE VIEW 최고실적_영업사원뷰 AS
+    SELECT s.NAME, s.AGE, SUM(o.AMOUNT) AS 영업실적
+        FROM SALESPERSON_0402 s LEFT JOIN ORDER_0402 o ON s.NAME = o.SALESPERSON
+    GROUP BY s.NAME, s.AGE
+        HAVING SUM(o.AMOUNT) = MAX(o.AMOUNT);
+
+--12. 도시별 영업사원 활동 현황 뷰를 작성하시오
+CREATE VIEW 도시별_영업사원_활동현황뷰 AS
+    SELECT c.CITY AS 도시, o.SALESPERSON AS 영업사원,
+        COUNT(o.NUMBER_0402) AS 주문횟수, SUM(o.AMOUNT) AS 총판매금액
+    FROM CUSTOMER_0402 c LEFT JOIN ORDER_0402 o ON c.NAME = o.CUSTNAME
+        LEFT JOIN SALESPERSON_0402 o ON c.NAME = o.SALESPERSON
+    GROUP BY c.CITY, o.SALESPERSON;
+
+--13. 영업사원 급여 대비 매출 효율 뷰를 작성하시오
+CREATE VIEW 영업사원_급여대비_매출효율뷰 AS
+    SELECT s.NAME AS 영업사원, s.SALARY AS 급여, SUM(o.AMOUNT) AS 총매출, ROUND((SUM(o.AMOUNT) / s.SALARY) * 100, 2) || '%' AS 매출효율
+        FROM SALESPERSON_0402 s JOIN ORDER_0402 o ON s.NAME = o.SALESPERSON
+    GROUP BY s.NAME, s.SALARY;
+
+--14.업종별 담당 영업사원 현황 뷰를 작성하시오
+CREATE VIEW 업종별_담당영업사원_현황뷰 AS
+    SELECT c.INDUSTRYTYPE AS 산업유형, o.SALESPERSON AS 영업사원
+        FROM CUSTOMER_0402 c LEFT JOIN ORDER_0402 o ON c.NAME = o.CUSTNAME
+    WHERE o.SALESPERSON IS NOT NULL
+        ORDER BY c.INDUSTRYTYPE;
+
+--15. 주문 금액 구간별 분류 뷰를 작성하시오
+CREATE VIEW 주문금액_구간별_분류뷰 AS
+    SELECT o.NUMBER_0402 AS 주문번호, o.CUSTNAME AS 고객명, o.SALESPERSON AS 영업사원명, o.AMOUNT AS 주문금액,
+        CASE 
+            WHEN o.AMOUNT > MAX(o.AMOUNT) over() *0.75 THEN 1
+            WHEN o.AMOUNT > MAX(o.AMOUNT) over() *0.5 THEN 2
+            WHEN o.AMOUNT > MAX(o.AMOUNT) over() *0.25 THEN 3
+            ELSE 4 
+        END AS 주문금액구간
+    FROM ORDER_0402 o;
+                                        
+--[여행사 데이터베이스] 128page 연습문제 19
+
+--1. 전체 예약 통합 현황 뷰를 작성하시오
+CREATE VIEW 전체예약_통합현황뷰 AS
+    SELECT p.PID AS 승객ID, p.PNAME AS 승객명, p.PGENDER AS 성별, p.PCITY AS 거주도시,
+        a.AID AS 여행사ID, a.ANAME AS 여행사명, a.ACITY AS 여행사위치, f.FDATE AS 출발일자,
+    f.TIME AS 출발시간, f.SRC AS 출발지, f.DEST AS 도착지,
+        f.FID AS 예약ID, f.FDATE AS 예약일자
+    FROM PASSENGER p JOIN BOOKING b ON p.PID = b.PID
+        JOIN FLIGHT f ON b.FID = f.FID JOIN AGENCY a ON b.AID = a.AID;
+
+--2. 승객별 예약 내역 뷰를 작성하시오
+CREATE VIEW 승객별_예약내역뷰 AS
+    SELECT p.PID AS 승객ID, P.PNAME AS 승객명, f.FID AS 항공ID, f.FDATE AS 출발일자, 
+        f.TIME AS 출발시간, f.SRC AS 출발지, f.DEST AS 도착지,
+    a.AID AS 여행사ID, a.ANAME AS 여행사명, a.ACITY AS 여행사위치
+        FROM PASSENGER p JOIN BOOKING b ON p.PID = b.PID
+    JOIN FLIGHT f ON b.FID = f.FID JOIN AGENCY a ON b.AID = a.AID;
+
+--3. 여행사별 예약 건수 및 실적 뷰를 작성하시오
+CREATE VIEW 여행사별_예약건수및_실적뷰 AS
+    SELECT b.AID, COUNT(*) AS 총예약건수, COUNT(b.FID) AS 취급항공편수
+        FROM BOOKING b
+    GROUP BY b.AID;
+    
+--4. 항공편별 예약 승객 수 뷰를 작성하시오
+CREATE VIEW 항공편별_예약승객수뷰 AS
+    SELECT f.FID AS 항공ID, f.SRC AS 출발지, f.DEST AS 도착지, COUNT(b.PID) AS 예약승객수
+        FROM FLIGHT f LEFT JOIN BOOKING b ON f.FID = b.FID
+    GROUP BY f.FID, f.SRC, f.DEST;
+
+--5. 출발지·도착지별 노선 통계 뷰를 작성하시오
+CREATE VIEW 출발지_도착지별_노선통계뷰 AS
+    SELECT f.SRC AS 출발지, f.DEST AS 도착지, COUNT(DISTINCT f.FID) AS 운항횟수, SUM(b.PID) AS 총예약건수
+        FROM FLIGHT f LEFT JOIN BOOKING b ON f.FID = b.FID
+    GROUP BY f.SRC, f.DEST;
+    
+--6. 도시별 승객 예약 현황 뷰를 작성하시오
+CREATE VIEW 도시별_승객예약_현황뷰 AS
+    SELECT p.PCITY AS 거주도시, COUNT(b.PID) AS 예약건수
+        FROM PASSENGER p LEFT JOIN BOOKING b ON p.PID = b.PID
+    GROUP BY p.PCITY;
+
+--7. 성별 이용 통계 뷰를 작성하시오
+CREATE VIEW 성별이용_통계뷰 AS
+    SELECT p.PGENDER AS 성별, COUNT(b.PID) AS 예약건수, COUNT(DISTINCT b.FID) AS 이용노선
+        FROM BOOKING b LEFT JOIN PASSENGER p ON b.PID = p.PID
+    GROUP BY p.PGENDER;
+
+--8. 예약 이력 없는 승객 뷰를 작성하시오
+CREATE VIEW 예약이력없는_승객뷰 AS
+    SELECT p.PID, p.PNAME, p.PGENDER, p.PCITY
+        FROM PASSENGER p LEFT JOIN BOOKING b ON p.PID = b.PID
+    WHERE b.PID IS NULL;
+
+--9.예약 실적 없는 여행사 뷰를 작성하시오
+CREATE VIEW 예약실적없는_여행사뷰 AS
+    SELECT a.AID AS 여행사ID, a.ANAME AS 여행사이름, a.ACITY AS 여행사위치
+        FROM AGENCY a LEFT JOIN BOOKING b ON a.AID = b.AID
+    WHERE b.AID IS NULL;
+
+--10. 승객별 이용 여행사 목록 뷰를 작성하시오
+CREATE VIEW 승객별_이용여행사_목록뷰 AS
+    SELECT DISTINCT p.PID, a.ANAME
+        FROM PASSENGER p JOIN BOOKING b ON p.PID = b.PID
+    JOIN AGENCY a ON b.AID = a.AID
+        ORDER BY p.PID;
+
+--11. 동일 출발·도착지 왕복 노선 뷰를 작성하시오
+CREATE VIEW 동일출발_도착지왕복_노선뷰 AS
+    SELECT f.FID, f.SRC, f.DEST
+        FROM FLIGHT f JOIN FLIGHT f1 ON f.FID = f1.FID
+    WHERE f.SRC = f1.DEST AND f.DEST = f1.SRC;
+
+--12. 여행사별 담당 승객 상세 뷰를 작성하시오
+CREATE VIEW 여행사별_담당승객_상세뷰 AS
+    SELECT DISTINCT a.ANAME AS 여행사명, p.PID AS 승객ID, p.PNAME AS 승객명, p.PGENDER AS 성별, p.PCITY AS 거주도시,
+        f.FID AS 항공ID, f.FDATE AS 운항일자, f.TIME AS 운항시간, f.SRC AS 출발지, f.DEST AS 도착지
+    FROM PASSENGER p JOIN BOOKING b ON p.PID = b.PID 
+        JOIN AGENCY a ON b.AID = a.AID JOIN FLIGHT f ON b.FID = f.FID;
+
+--13. 날짜별 예약 및 항공편 현황 뷰를 작성하시오
+CREATE VIEW 날짜별_예약및_항공평현황뷰 AS
+    SELECT DISTINCT f.FID AS 항공ID, f.FDATE AS 운항일자, f.TIME AS 운항시간, f.SRC AS 출발지, f.DEST AS 도착지,
+        b.PID AS 승객ID, b.AID AS 여행사ID, b.FDATE AS 예약일시
+    FROM FLIGHT f LEFT JOIN BOOKING b ON f.FID = b.FID;
+
+--14.다중 항공편 이용 승객 뷰를 작성하시오
+CREATE VIEW 다중항공편_이용승객뷰 AS
+    SELECT DISTINCT p.PID AS 승객ID, p.PNAME AS 승객명, p.PGENDER AS 성별, p.PCITY AS 거주도시, COUNT(b.FID) AS 예약현황
+        FROM PASSENGER p LEFT JOIN BOOKING b ON p.PID = b.PID
+    GROUP BY p.PID, p.PNAME, p.PGENDER, p.PCITY
+        HAVING COUNT(b.FID) >= 2;
+
+--[기업프로젝트 데이터베이스] 128page 20번 문제
+
+--1. 직원 전체 정보 통합 뷰를 작성하시오
+CREATE VIEW 직원전체_정보통합뷰 AS
+    SELECT e.EMPNO AS 직원ID, e.NAME AS 이름, e.PHONENO AS 전화번호, e.ADDRESS AS 주소, e.SEX AS 성별, e.POSITION AS 직책, e.DEPTNO AS 부서ID, d.DEPTNAME AS 부서명
+        FROM EMPLOYEE e JOIN DEPARTMENT d ON e.DEPTNO = d.DEPTNO;
+
+--2. 직원별 프로젝트 참여 현황 뷰를 작성하시오
+CREATE VIEW 직원별프로젝트_참여현황뷰 AS
+    SELECT e.NAME AS 성명, p.PROJNO AS 프로젝트ID, p.PROJNAME AS 프로젝트명, p.DEPTNO AS 부서ID
+        FROM EMPLOYEE e JOIN PROJECT p ON e.DEPTNO = p.DEPTNO;
+
+--3. 부서별 직원 수 및 현황 뷰를 작성하시오
+CREATE VIEW 부서별_직원수및_현황뷰 AS
+    SELECT d1.부서번호, d1.부서명, d1.직원수, e1.EMPNO AS 관리자사번, e1.NAME AS 관리자이름, e1.PHONENO AS 전화번호, 
+            e1.ADDRESS AS 주소, e1.SEX AS 성별, e1.POSITION AS 직책
+        FROM (  SELECT d.DEPTNO AS 부서번호, d.DEPTNAME AS 부서명, d.MANAGER, COUNT(e.EMPNO) AS 직원수
+                    FROM DEPARTMENT d JOIN EMPLOYEE e ON d.DEPTNO = e.DEPTNO
+                GROUP BY d.DEPTNO, d.DEPTNAME, d.MANAGER) d1
+    JOIN EMPLOYEE e1 ON d1.부서번호 = e1.DEPTNO
+        WHERE e1.EMPNO = d1.MANAGER;
+
+--4. 프로젝트별 참여 직원 및 총 투입 시간 뷰를 작성하시오
+CREATE VIEW 프로젝트별_참여직원및_총투입시간뷰 AS
+    SELECT DISTINCT p.PROJNO AS 프로젝트ID, p.PROJNAME AS 프로젝트명, p.DEPTNO AS 부서ID,
+        COUNT(w.EMPNO) AS 직원수, SUM(w.HOURS_WORKED) AS 총근무시간
+    FROM PROJECT p JOIN WORKS w ON p.PROJNO = w.PROJNO    
+        GROUP BY p.PROJNO, p.PROJNAME, p.DEPTNO;
+        
+--5. 직원별 총 근무 시간 뷰를 작성하시오
+CREATE VIEW 직원별_총근무시간뷰 AS
+    SELECT DISTINCT e.EMPNO AS 직원ID, e.NAME AS 이름, SUM(w.HOURS_WORKED) AS 총근무시간
+        FROM EMPLOYEE e JOIN WORKS w ON e.EMPNO = w.EMPNO
+    GROUP BY e.EMPNO, e.NAME;
+    
+--6. 부서별 프로젝트 현황 뷰를 작성하시오
+CREATE VIEW 부서별프로젝트_현황뷰 AS
+    SELECT p.DEPTNO AS 부서ID, COUNT(p.PROJNO) AS 프로젝트수, SUM(w.HOURS_WORKED) AS 총투입시간
+        FROM WORKS w JOIN PROJECT p ON w.PROJNO = p.PROJNO
+    GROUP BY p.DEPTNO;
+
+--7. 프로젝트에 참여하지 않는 직원 뷰를 작성하시오
+CREATE VIEW 프로젝트에_참여하지않는_직원뷰 AS
+    SELECT DISTINCT e.EMPNO AS 직원ID, e.NAME AS 이름, e.PHONENO AS 전화번호, e.SEX AS 성별, e.POSITION AS 직책, e.DEPTNO AS 부서ID
+        FROM EMPLOYEE e
+    WHERE NOT EXISTS(
+        SELECT 1 FROM WORKS w 
+            WHERE w.EMPNO = e.EMPNO);
+            
+--8. 성별 프로젝트 참여 통계 뷰를 작성하시오
+CREATE VIEW 성별프로젝트_참여통계뷰 AS
+    SELECT e.SEX AS 성별, COUNT(w.PROJNO) AS 프로젝트참여수, ROUND(AVG(w.HOURS_WORKED), 2) AS 평균근무시간
+        FROM EMPLOYEE e
+    JOIN WORKS w ON e.EMPNO = w.EMPNO
+        GROUP BY e.SEX;
+
+--9. 관리자(Manager) 직원 상세 뷰를 작성하시오
+CREATE VIEW 관리자직원_상세뷰 AS
+    SELECT e.EMPNO AS 직원ID, e.NAME AS 직원명, e.PHONENO AS 전화번호, e.ADDRESS AS 주소, e.SEX AS 성별, e.POSITION AS 직책, e.DEPTNO AS 부서ID
+        FROM EMPLOYEE e
+    WHERE EXISTS (  SELECT 1
+                        FROM DEPARTMENT
+                    WHERE MANAGER = e.EMPNO);
+
+
+--10. 직책별 프로젝트 참여 현황 뷰를 작성하시오
+CREATE VIEW 직책별_프로젝트_참여현황뷰 AS
+    SELECT e.POSITION AS 직책, COUNT(p.PROJNO) AS 프로젝트_참여건수, ROUND(AVG(w.HOURS_WORKED), 2) AS 평균_투입시간
+        FROM EMPLOYEE e LEFT JOIN WORKS w ON e.EMPNO = w.EMPNO
+    JOIN PROJECT p ON w.PROJNO = p.PROJNO
+        GROUP BY e.POSITION;
+        
+--11. 다중 프로젝트 참여 직원 뷰를 작성하시오
+CREATE VIEW 다중프로젝트_참여직원뷰 AS
+    SELECT e.EMPNO AS 직원ID, e.NAME AS 이름, e.PHONENO AS 전화번호, e.ADDRESS AS 주소, e.SEX AS 성별, e.POSITION AS 직책, e.DEPTNO AS 부서ID
+        FROM EMPLOYEE e JOIN WORKS w ON e.EMPNO = w.EMPNO
+    LEFT JOIN PROJECT p ON w.PROJNO = p.PROJNO
+        GROUP BY e.EMPNO, e.NAME, e.PHONENO, e.ADDRESS, e.SEX, e.POSITION, e.DEPTNO
+    HAVING COUNT(p.PROJNO) >= 2;
+
+--12. 부서 내 프로젝트 참여 직원 상세 뷰를 작성하시오
+CREATE VIEW 부서내_프로젝트_참여직원뷰 AS
+    SELECT d.DEPTNAME AS 부서명, p.PROJNAME AS 프로젝트명, e.EMPNO AS 직원ID, e.NAME AS 이름, e.PHONENO AS 전화번호, e.ADDRESS AS 주소, e.SEX AS 성별, e.POSITION AS 직무, e.DEPTNO AS 부서ID
+        FROM EMPLOYEE e JOIN WORKS w ON e.EMPNO = w.EMPNO
+    JOIN PROJECT p ON w.PROJNO = p.PROJNO JOIN DEPARTMENT d ON p.DEPTNO = d.DEPTNO
+        WHERE e.DEPTNO = d.DEPTNO;
+        
+--13. 타 부서 프로젝트 참여 직원 뷰를 작성하시오
+CREATE VIEW 타부서_프로젝트참여_직원뷰 AS
+    SELECT e.EMPNO AS 직원ID, e.NAME AS 성명, e.PHONENO AS 전화번호, e.SEX AS 성별, e.POSITION AS 직책, e.DEPTNO AS 부서ID
+        FROM EMPLOYEE e JOIN WORKS w ON e.EMPNO = w.EMPNO
+    JOIN PROJECT p ON w.PROJNO = p.PROJNO JOIN DEPARTMENT d ON p.DEPTNO = d.DEPTNO
+        WHERE e.DEPTNO != d.DEPTNO;
+    
+--14. 고투입 시간 직원 뷰 (평균 이상 근무)를 작성하시오
+CREATE VIEW 고투입_시간직원뷰 AS
+    SELECT e.EMPNO AS 직원ID, e.NAME AS 성명, e.PHONENO AS 전화번호, e.SEX AS 성별, e.POSITION AS 직책, e.DEPTNO AS 부서ID
+        FROM EMPLOYEE e JOIN WORKS w ON e.EMPNO = w.EMPNO
+    WHERE w.HOURS_WORKED >= (
+        SELECT AVG(HOURS_WORKED)
+            FROM WORKS);
+
+--15. 프로젝트 미배정 부서 뷰를 작성하시오
+CREATE VIEW 프로젝트_미배정부서뷰 AS
+    SELECT d.DEPTNO AS 부서ID, d.DEPTNAME AS 부서명, d.MANAGER AS 매니저
+        FROM Department d
+    WHERE NOT EXISTS (   
+        SELECT 1
+            FROM PROJECT
+        WHERE DEPTNO = d.DEPTNO);
